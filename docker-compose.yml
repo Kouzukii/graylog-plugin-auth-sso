@@ -1,0 +1,65 @@
+version: '2'
+services:
+  # MongoDB: https://hub.docker.com/_/mongo/
+  mongo:
+    image: mongo:3
+  # Elasticsearch: https://www.elastic.co/guide/en/elasticsearch/reference/5.5/docker.html
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.9
+    environment:
+    - http.host=0.0.0.0
+    - transport.host=localhost
+    - network.host=0.0.0.0
+    # Disable X-Pack security: https://www.elastic.co/guide/en/elasticsearch/reference/5.5/security-settings.html#general-security-settings
+    - xpack.security.enabled=false
+    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g
+  # Graylog: https://hub.docker.com/r/graylog/graylog/
+  graylog:
+    image: graylog/graylog:2.4
+    volumes:
+    - ./target/graylog-plugin-auth-sso-2.4.3-SNAPSHOT.jar:/usr/share/graylog/plugin/graylog-plugin-auth-sso-2.4.3.jar
+    environment:
+    # CHANGE ME!
+    - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+    # Password: admin
+    - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+    - GRAYLOG_WEB_ENDPOINT_URI=http://127.0.0.1:9000/api
+    links:
+    - mongo
+    - elasticsearch
+    ports:
+    # Graylog web interface and REST API
+    - 9000:9000
+    # Syslog TCP
+    - 514:514
+    # Syslog UDP
+    - 514:514/udp
+    # GELF TCP
+    - 12201:12201
+    # GELF UDP
+    - 12201:12201/udp
+  graylog-sso-proxy:
+    image: quay.io/gambol99/keycloak-proxy
+    entrypoint:
+    - /opt/keycloak-proxy
+    - --discovery-url=https://keycloak.integration.obi.de/auth/realms/SSO
+    - --client-id=graylog
+    - --client-secret=14db21f5-8bee-45a9-a445-979ef61b4f9f
+    - --listen=:8080
+    - --preserve-host
+    - --add-claims=roles
+    - --redirection-url=http://localhost:8080
+    - --enable-refresh-tokens=false
+    - --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
+    - --upstream-url=http://graylog:9000
+    - --enable-default-deny=true
+    - --secure-cookie=false
+    links:
+    - graylog
+    ports:
+    - 8080:8080

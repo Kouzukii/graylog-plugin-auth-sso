@@ -7,9 +7,6 @@ import { PageHeader, Spinner } from "components/common";
 import SsoAuthActions from "SsoAuthActions";
 import SsoAuthStore from "SsoAuthStore";
 
-import StoreProvider from 'injection/StoreProvider';
-const RolesStore = StoreProvider.getStore('Roles')
-
 import ObjectUtils from 'util/ObjectUtils';
 
 const SsoConfiguration = React.createClass({
@@ -19,9 +16,6 @@ const SsoConfiguration = React.createClass({
 
   componentDidMount() {
     SsoAuthActions.config();
-    RolesStore.loadRoles().done(roles => {
-      this.setState({ roles: roles.map(role => role.name) });
-    });
   },
 
   _saveSettings(ev) {
@@ -49,7 +43,7 @@ const SsoConfiguration = React.createClass({
 
   render() {
     let content;
-    if (!this.state.config || !this.state.roles) {
+    if (!this.state.config) {
       content = <Spinner />;
     } else {
       let trustedProxies = null;
@@ -68,7 +62,6 @@ const SsoConfiguration = React.createClass({
         <br/>
         {trustedProxies}
       </span>);
-      const roles = this.state.roles.map((role) => <option key={"default-group-" + role} value={role}>{role}</option>);
       content = (
         <Row>
           <Col lg={8}>
@@ -109,19 +102,10 @@ const SsoConfiguration = React.createClass({
                        wrapperClassName="col-sm-9" placeholder="localhost" label="Email Domain"
                        value={this.state.config.default_email_domain} help="The default domain to use if there is no email header configured (defaults to 'localhost')."
                        onChange={this._bindValue} disabled={!this.state.config.auto_create_user}/>
-                <Input id="default_group" labelClassName="col-sm-3"
-                       wrapperClassName="col-sm-9" label="Default User Role"
-                       help="The default Graylog role determines whether a user created can access the entire system, or has limited access.">
-                  <Row>
-                    <Col sm={6}>
-                      <select id="default_group" name="default_group" className="form-control" required
-                              value={this.state.config.default_group || 'Reader'}
-                              onChange={this._bindValue} disabled={!this.state.config.auto_create_user}>
-                              {roles}
-                      </select>
-                    </Col>
-                  </Row>
-                </Input>
+                <Input type="text" id="group_header" name="group_header" labelClassName="col-sm-3"
+                       wrapperClassName="col-sm-9" placeholder="Group header" label="Group Header"
+                       value={this.state.config.group_header} help={"HTTP header containing the groups of user to create (defaults to reader group)."}
+                       onChange={this._bindValue} disabled={!this.state.config.auto_create_user}/>
               </fieldset>
               <fieldset>
                 <legend className="col-sm-12">Store settings</legend>

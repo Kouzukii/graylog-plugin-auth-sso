@@ -65,9 +65,11 @@ public class SsoAuthRealmTest {
         when(userService.load(eq("horst"))).thenReturn(new UserImpl(mock(PasswordAlgorithmFactory.class),
                                                                     mock(Permissions.class),
                                                                     Maps.newHashMap()));
+        final RoleService roleService = mock(RoleService.class);
+        when(roleService.getReaderRoleObjectId()).thenReturn("57a1d276227c473674e1d997");
         final SsoAuthRealm realm = new SsoAuthRealm(userService,
                                                     configService,
-                                                    mock(RoleService.class),
+                                                    roleService,
                                                     mock(LdapUserAuthenticator.class),
                                                     trustedProxies);
 

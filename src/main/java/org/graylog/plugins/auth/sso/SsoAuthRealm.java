@@ -18,6 +18,7 @@ package org.graylog.plugins.auth.sso;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.AuthenticationInfo;
 import org.apache.shiro.authc.AuthenticationToken;
@@ -43,9 +44,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.ws.rs.core.MultivaluedMap;
 import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class SsoAuthRealm extends AuthenticatingRealm {
     private static final Logger LOG = LoggerFactory.getLogger(SsoAuthRealm.class);
@@ -129,24 +128,6 @@ public class SsoAuthRealm extends AuthenticatingRealm {
                         user.setEmail(username + "@" + Optional.ofNullable(config.defaultEmailDomain()).orElse("localhost"));
                     }
 
-                    final String defaultGroup = config.defaultGroup();
-                    if (defaultGroup != null) {
-                        try {
-                            Role role = roleService.loadAllLowercaseNameMap().get(defaultGroup.toLowerCase());
-                            if (role != null) {
-                                user.setRoleIds(Collections.singleton(role.getId()));
-                            } else {
-                                LOG.warn("Could not find group named {}, giving user reader role instead", defaultGroup);
-                                user.setRoleIds(Collections.singleton(roleService.getReaderRoleObjectId()));
-                            }
-                        }
-                        catch (NotFoundException e) {
-                            LOG.info("Unable to retrieve roles, giving user reader role");
-                            user.setRoleIds(Collections.singleton(roleService.getReaderRoleObjectId()));
-                        }
-                    } else {
-                        user.setRoleIds(Collections.singleton(roleService.getReaderRoleObjectId()));
-                    }
                     try {
                         userService.save(user);
                     } catch (ValidationException e) {
@@ -161,6 +142,35 @@ public class SsoAuthRealm extends AuthenticatingRealm {
                     return null;
                 }
             }
+
+            final String groupHeader = config.groupHeader();
+            if (groupHeader != null) {
+                try {
+                    Map<String, Role> roles = roleService.loadAllLowercaseNameMap();
+                    Set<String> ids = new HashSet<>();
+
+                    for (String group : headerValue(requestHeaders, groupHeader)
+                            .map(s -> StringUtils.split(s, ","))
+                            .orElseGet(() -> new String[0])) {
+                        Role role = roles.get(group.trim().toLowerCase());
+                        if (role == null) continue;
+                        ids.add(role.getId());
+                    }
+
+                    if (ids.size() > 0) {
+                        user.setRoleIds(ids);
+                    } else {
+                        throw new NotFoundException();
+                    }
+
+                } catch (NotFoundException e) {
+                    LOG.info("Unable to retrieve roles, giving user reader role");
+                    user.setRoleIds(Collections.singleton(roleService.getReaderRoleObjectId()));
+                }
+            } else {
+                user.setRoleIds(Collections.singleton(roleService.getReaderRoleObjectId()));
+            }
+
             LOG.trace("Trusted header {} set, continuing with user name {}", usernameHeader, user.getName());
 
             ShiroSecurityContext.requestSessionCreation(true);

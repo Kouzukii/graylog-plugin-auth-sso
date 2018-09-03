@@ -54,9 +54,9 @@ public abstract class SsoAuthConfig {
     @Nullable
     public abstract String emailHeader();
 
-    @JsonProperty("default_group")
+    @JsonProperty("group_header")
     @Nullable
-    public abstract String defaultGroup();
+    public abstract String groupHeader();
 
     @JsonProperty("auto_create_user")
     public abstract boolean autoCreateUser();
@@ -85,8 +85,8 @@ public abstract class SsoAuthConfig {
         @JsonProperty("email_header")
         public abstract Builder emailHeader(@Nullable String emailHeader);
 
-        @JsonProperty("default_group")
-        public abstract Builder defaultGroup(@Nullable String defaultGroup);
+        @JsonProperty("group_header")
+        public abstract Builder groupHeader(@Nullable String groupHeader);
 
         @JsonProperty("auto_create_user")
         public abstract Builder autoCreateUser(boolean autoCreateUser);
